@@ -2,7 +2,7 @@
 
 ## 项目概览
 
-AI 智能题库助手 - 注册会计师备考学习辅助工具。用户上传题目截图，多模态大模型直接看图识别题目并给出结构化解析（答案、解析、知识点、易错点）。
+AI 智能题库助手 - 注册会计师备考学习辅助工具。用户上传题目截图，多模态大模型直接看图识别题目并给出结构化解析（答案、解析、知识点、易错点）。支持悬浮书签工具，在任意答题网页注入悬浮面板。
 
 **产品定位**：学习辅助工具，非考试代答工具。只负责呈现答案和解析，用户自行查看和提交。
 
@@ -34,7 +34,8 @@ pnpm run start      # 等同于 node server.js
 .
 ├── index.html      # 主页面（HTML 结构）
 ├── style.css       # 全局样式（简洁风格、响应式）
-├── app.js          # 前端逻辑（上传、解析、错题本、历史记录）
+├── app.js          # 前端逻辑（上传、解析、错题本、历史记录、悬浮工具）
+├── bookmarklet.js  # 悬浮书签工具（注入答题网页的悬浮面板）
 ├── server.js       # 后端服务（静态文件 + LLM API 代理 + SSE 流式）
 ├── package.json    # 依赖配置
 ├── .coze           # Coze 沙箱配置
@@ -47,8 +48,10 @@ pnpm run start      # 等同于 node server.js
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/api/analyze` | POST | 接收图片 base64 + 学科，SSE 流式返回 LLM 解析结果 |
+| `/api/analyze-text` | POST | 接收文本 + 学科，SSE 流式返回 LLM 解析结果（悬浮工具用） |
 | `/api/subjects` | GET | 返回学科列表（税法/会计/审计/财管/战略/经济法） |
 | `/api/health` | GET | 健康检查 |
+| `/bookmarklet.js` | GET | 悬浮书签工具脚本（注入答题网页） |
 
 ### /api/analyze 请求格式
 
@@ -69,6 +72,28 @@ data: {"type":"chunk","content":"...","index":0}
 data: {"type":"complete","index":0,"raw":"完整JSON字符串"}
 data: {"type":"error","index":0,"message":"错误信息"}
 ```
+
+### /api/analyze-text 请求格式
+
+```json
+{
+  "text": "1. 下列哪项属于流动资产？ A. 固定资产 B. 存货 C. 无形资产 D. 长期股权投资",
+  "subject": "accounting",
+  "index": 0
+}
+```
+
+### 悬浮书签工具（Bookmarklet）
+
+`bookmarklet.js` 是注入到任意答题网页的悬浮面板脚本，通过 Bookmarklet 方式加载：
+
+1. 用户在主站「悬浮工具」Tab 中配置后端地址
+2. 将生成的书签链接拖到浏览器书签栏
+3. 在任意答题网页点击书签，悬浮面板注入页面
+4. 面板支持：区域截图（Screen Capture API）、Ctrl+V 粘贴、自动扫描页面文本
+5. 调用 `/api/analyze`（图片）或 `/api/analyze-text`（文本）进行解析
+
+**产品边界**：悬浮工具只负责呈现答案和解析，不自动提交、不自动点击选项。
 
 ### LLM 返回的 JSON 结构
 

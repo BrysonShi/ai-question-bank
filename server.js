@@ -264,6 +264,82 @@ app.post('/api/analyze', async (req, res) => {
 });
 
 /**
+ * POST /api/analyze-text
+ * 接收页面文本 + 学科，调用 LLM 分析题目，SSE 流式返回（用于悬浮工具的自动扫描功能）
+ * Body: { text: "...", subject: "tax", index: 0, model?: "..." }
+ */
+app.post('/api/analyze-text', async (req, res) => {
+  const { text, subject = 'accounting', index = 0, model } = req.body;
+
+  if (!text) {
+    return res.status(400).json({ error: '缺少文本数据' });
+  }
+
+  const subjectConfig = SUBJECTS[subject] || SUBJECTS.accounting;
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'X-Accel-Buffering': 'no'
+  });
+
+  res.write(`data: ${JSON.stringify({ type: 'start', index, subject: subjectConfig.name })}\n\n`);
+
+  try {
+    const userPrompt = `请仔细分析以下网页文本中的考试题目，以纯 JSON 格式返回分析结果（不要包含 \`\`\`json 等标记）。
+
+如果文本中包含多道题目，请全部解析。如果没有识别到题目，返回 {"questions": [], "error": "未识别到题目内容"}。
+
+返回格式：
+{
+  "questions": [
+    {
+      "questionNumber": "题号（如文本中无题号，按 1、2、3 顺序编号）",
+      "questionType": "题型：单选题|多选题|判断题|简答题|综合题|计算题",
+      "questionStem": "题干完整内容",
+      "options": { "A": "选项A", "B": "选项B", "C": "选项C", "D": "选项D" },
+      "answer": "正确答案",
+      "analysis": "详细解析，包含解题思路和步骤",
+      "knowledgePoints": ["相关知识点1", "相关知识点2"],
+      "commonMistakes": "易错点提示"
+    }
+  ]
+}
+
+注意：
+1. options 字段仅适用于选择题，其他题型设为 null
+2. answer 字段对判断题填写"正确"或"错误"
+3. 解析要专业准确，有助于理解记忆
+4. 知识点要具体，便于针对性复习
+
+以下是网页中提取的题目文本：
+---
+${text}
+---`;
+
+    const messages = [
+      { role: 'system', content: subjectConfig.systemPrompt },
+      { role: 'user', content: userPrompt }
+    ];
+
+    let fullContent = '';
+    for await (const chunk of streamLLM(messages, model, 0.3, req)) {
+      fullContent += chunk;
+      res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk, index })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ type: 'complete', index, raw: fullContent })}\n\n`);
+  } catch (error) {
+    console.error('Text analysis error:', error);
+    res.write(`data: ${JSON.stringify({ type: 'error', index, message: error.message || '分析失败，请重试' })}\n\n`);
+  } finally {
+    res.end();
+  }
+});
+
+/**
  * GET /api/subjects - 获取学科列表
  */
 app.get('/api/subjects', (req, res) => {

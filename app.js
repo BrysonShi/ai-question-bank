@@ -873,6 +873,8 @@ function switchTab(tabName) {
     renderWrongBook();
   } else if (tabName === 'history') {
     renderHistory();
+  } else if (tabName === 'widget') {
+    initWidgetTab();
   }
 }
 
@@ -1022,6 +1024,56 @@ function init() {
   renderHistory();
   renderResults();
   updateActionBar();
+
+  initWidgetTab();
+}
+
+// ========== 悬浮工具 Tab ==========
+function initWidgetTab() {
+  var serverInput = document.getElementById('widget-server');
+  var bookmarkletLink = document.getElementById('bookmarklet-link');
+  if (!serverInput || !bookmarkletLink) return;
+
+  // 加载已保存的服务器地址
+  var savedServer = localStorage.getItem('aqb_api_base') || '';
+  if (savedServer) {
+    serverInput.value = savedServer;
+  } else {
+    // 自动检测当前 origin
+    serverInput.value = window.location.origin;
+  }
+
+  // 更新书签
+  function updateBookmarklet() {
+    var serverAddr = serverInput.value.trim().replace(/\/+$/, '');
+    if (!serverAddr) {
+      bookmarkletLink.href = 'javascript:void(0)';
+      bookmarkletLink.style.opacity = '0.5';
+      bookmarkletLink.style.pointerEvents = 'none';
+      return;
+    }
+    bookmarkletLink.style.opacity = '1';
+    bookmarkletLink.style.pointerEvents = '';
+    var scriptUrl = serverAddr + '/bookmarklet.js';
+    var code = "(function(){var s=document.createElement('script');s.src='" + scriptUrl + "?t=' + Date.now();s.onload=function(){window.__AQBBookMarklet && window.__AQBBookMarklet.init('" + serverAddr + "');};document.head.appendChild(s);})();";
+    bookmarkletLink.href = 'javascript:' + encodeURIComponent(code);
+  }
+
+  updateBookmarklet();
+
+  serverInput.addEventListener('input', function () {
+    var val = this.value.trim();
+    if (val) {
+      localStorage.setItem('aqb_api_base', val.replace(/\/+$/, ''));
+    }
+    updateBookmarklet();
+  });
+
+  // 拖拽提示
+  bookmarkletLink.addEventListener('dragstart', function (e) {
+    e.dataTransfer.setData('text/uri-list', bookmarkletLink.href);
+    e.dataTransfer.setData('text/plain', bookmarkletLink.href);
+  });
 }
 
 init();
