@@ -1030,8 +1030,10 @@ function init() {
 
 // ========== 悬浮工具 Tab ==========
 function initWidgetTab() {
-  var serverInput = document.getElementById('widget-server');
-  var bookmarkletLink = document.getElementById('bookmarklet-link');
+  var serverInput = document.getElementById('widgetApiBase');
+  var bookmarkletLink = document.getElementById('bookmarkletLink');
+  var codeInput = document.getElementById('bookmarkletCode');
+  var copyBtn = document.getElementById('copyCodeBtn');
   if (!serverInput || !bookmarkletLink) return;
 
   // 加载已保存的服务器地址
@@ -1039,42 +1041,75 @@ function initWidgetTab() {
   if (savedServer) {
     serverInput.value = savedServer;
   } else {
-    // 自动检测当前 origin
     serverInput.value = window.location.origin;
   }
 
-  // 更新书签
+  // 生成书签代码（标准 bookmarklet 格式）
+  function generateCode() {
+    var serverAddr = serverInput.value.trim().replace(/\/+$/, '');
+    if (!serverAddr) serverAddr = window.location.origin;
+    var scriptUrl = serverAddr + '/bookmarklet.js';
+    // 标准 bookmarklet 格式：IIFE + void(0) 确保返回 undefined
+    return "(function(){window.__aqbApiBase='" + serverAddr + "';var s=document.createElement('script');s.src='" + scriptUrl + "?t='+Date.now();document.head.appendChild(s);})();void(0)";
+  }
+
+  // 更新书签链接和代码输入框
   function updateBookmarklet() {
     var serverAddr = serverInput.value.trim().replace(/\/+$/, '');
-    if (!serverAddr) {
-      bookmarkletLink.href = 'javascript:void(0)';
-      bookmarkletLink.style.opacity = '0.5';
-      bookmarkletLink.style.pointerEvents = 'none';
-      return;
-    }
+    var code = generateCode();
+
+    // 设置 href（用 setAttribute 避免浏览器编码问题）
+    bookmarkletLink.setAttribute('href', 'javascript:' + code);
     bookmarkletLink.style.opacity = '1';
     bookmarkletLink.style.pointerEvents = '';
-    var scriptUrl = serverAddr + '/bookmarklet.js';
-    var code = "(function(){window.__aqbApiBase='" + serverAddr + "';var s=document.createElement('script');s.src='" + scriptUrl + "?t='+Date.now();document.head.appendChild(s);})()";
-    // void 包裹整个 IIFE（含调用括号），防止页面跳转
-    bookmarkletLink.href = 'javascript:void(' + code + ')';
+
+    // 更新代码输入框
+    if (codeInput) {
+      codeInput.value = 'javascript:' + code;
+    }
+
+    // 保存地址
+    if (serverAddr) {
+      localStorage.setItem('aqb_api_base', serverAddr);
+    }
   }
 
   updateBookmarklet();
 
-  serverInput.addEventListener('input', function () {
-    var val = this.value.trim();
-    if (val) {
-      localStorage.setItem('aqb_api_base', val.replace(/\/+$/, ''));
-    }
-    updateBookmarklet();
+  // 输入时更新
+  serverInput.addEventListener('input', updateBookmarklet);
+
+  // 拖拽支持
+  bookmarkletLink.addEventListener('dragstart', function (e) {
+    var code = generateCode();
+    var href = 'javascript:' + code;
+    e.dataTransfer.setData('text/uri-list', href);
+    e.dataTransfer.setData('text/plain', href);
   });
 
-  // 拖拽提示
-  bookmarkletLink.addEventListener('dragstart', function (e) {
-    e.dataTransfer.setData('text/uri-list', bookmarkletLink.href);
-    e.dataTransfer.setData('text/plain', bookmarkletLink.href);
+  // 防止点击链接时执行（只能在书签栏使用）
+  bookmarkletLink.addEventListener('click', function (e) {
+    e.preventDefault();
+    return false;
   });
+
+  // 复制代码
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function () {
+      if (codeInput && codeInput.value) {
+        codeInput.select();
+        try {
+          document.execCommand('copy');
+          copyBtn.textContent = '已复制';
+          setTimeout(function () { copyBtn.textContent = '复制代码'; }, 2000);
+        } catch (e) {
+          // 降级：提示手动复制
+          codeInput.focus();
+          codeInput.select();
+        }
+      }
+    });
+  }
 }
 
 init();

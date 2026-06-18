@@ -172,7 +172,6 @@
               <div class="widget-config-row">
                 <label class="widget-config-label">后端服务地址</label>
                 <input type="text" id="widgetApiBase" class="widget-config-input" placeholder="https://your-backend.com" />
-                <button id="widgetGenBtn" class="btn btn-primary btn-sm">生成书签</button>
               </div>
               <p class="widget-config-hint">
                 留空则使用当前域名（同源部署时适用）。部署到 GitHub Pages 时请填写后端实际地址。
@@ -180,22 +179,31 @@
             </div>
 
             <div class="widget-bookmarklet-area">
-              <div class="widget-bookmarklet-label">将下方链接拖到浏览器书签栏：</div>
-              <a id="bookmarkletLink" class="bookmarklet-link" href="#">
+              <div class="widget-bookmarklet-label">方式一：拖拽安装（推荐）</div>
+              <a id="bookmarkletLink" class="bookmarklet-link" href="javascript:void(0)" onclick="return false;" draggable="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
                   <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                 </svg>
                 AI 题库助手
               </a>
-              <p class="widget-bookmarklet-hint">如果无法拖拽，右键链接 → 添加到书签</p>
+              <p class="widget-bookmarklet-hint">将上方链接拖到浏览器书签栏（Ctrl+Shift+B 显示书签栏）。如果拖拽无效，使用下方手动方式。</p>
+            </div>
+
+            <div class="widget-bookmarklet-area" style="margin-top:16px;">
+              <div class="widget-bookmarklet-label">方式二：手动创建（拖拽无效时使用）</div>
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <input type="text" id="bookmarkletCode" class="widget-config-input" readonly style="flex:1;font-size:11px;font-family:monospace;background:#f8fafc;" placeholder="点击下方按钮生成代码" />
+                <button id="copyCodeBtn" class="btn btn-primary btn-sm" style="white-space:nowrap;">复制代码</button>
+              </div>
+              <p class="widget-bookmarklet-hint">复制后：右键书签栏 → 添加网页 → 网址粘贴代码 → 名称填「AI 题库助手」</p>
             </div>
 
             <div class="widget-steps">
               <h3>使用步骤</h3>
               <ol>
-                <li>上方输入后端地址，点击「生成书签」</li>
-                <li>将生成的链接拖到浏览器书签栏（需显示书签栏：Ctrl+Shift+B）</li>
+                <li>上方输入后端地址（留空则用当前域名）</li>
+                <li>将「AI 题库助手」链接拖到浏览器书签栏（Ctrl+Shift+B 显示书签栏）</li>
                 <li>打开任意答题/练习网页</li>
                 <li>点击书签栏中的「AI 题库助手」</li>
                 <li>在悬浮面板中选择学科，点击「截图」或「扫描」</li>
