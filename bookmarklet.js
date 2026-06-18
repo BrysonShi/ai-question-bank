@@ -27,6 +27,8 @@
   var API_BASE = window.__aqbApiBase || localStorage.getItem('aqb_api_base') || '';
   var currentSubject = localStorage.getItem('aqb_subject') || 'accounting';
   var isAnalyzing = false;
+  var allQuestions = [];
+  var currentQIndex = 0;
 
   var SUBJECTS = {
     tax: '税法',
@@ -135,8 +137,11 @@
     '#aqb-panel .aqb-q-type.t-default { background: #f1f5f9; color: #64748b; }',
     '#aqb-panel .aqb-q-stem { font-size: 13px; color: #1e293b; margin-bottom: 8px; line-height: 1.5; }',
     '#aqb-panel .aqb-q-opts { font-size: 12px; color: #475569; margin-bottom: 8px; }',
-    '#aqb-panel .aqb-q-opt { padding: 2px 0; }',
-    '#aqb-panel .aqb-q-opt.correct { color: #16a34a; font-weight: 500; }',
+'#aqb-panel .aqb-q-opt { padding: 3px 0; border-radius: 4px; transition: background 0.15s; }',
+    '#aqb-panel .aqb-q-opt.correct {',
+    '  color: #16a34a; font-weight: 700; background: #f0fdf4;',
+    '  border: 1px solid #bbf7d0; padding: 4px 8px; margin: 2px 0;',
+    '}',
     '#aqb-panel .aqb-q-answer {',
     '  display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600;',
     '  color: #16a34a; margin-bottom: 6px;',
@@ -153,6 +158,21 @@
     '  border-radius: 3px;',
     '}',
     '#aqb-panel .aqb-q-mistake { font-size: 12px; color: #ea580c; margin-top: 4px; }',
+    '#aqb-panel .aqb-nav-bar {',
+    '  display: flex; align-items: center; justify-content: space-between;',
+    '  padding: 8px 12px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;',
+    '  gap: 8px;',
+    '}',
+    '#aqb-panel .aqb-nav-info { font-size: 13px; font-weight: 600; color: #1e293b; white-space: nowrap; }',
+    '#aqb-panel .aqb-nav-btns { display: flex; gap: 4px; }',
+    '#aqb-panel .aqb-nav-btn {',
+    '  padding: 4px 12px; border: 1px solid #e2e8f0; border-radius: 4px;',
+    '  background: #fff; color: #1e293b; font-size: 12px; cursor: pointer;',
+    '  transition: all 0.15s; white-space: nowrap;',
+    '}',
+    '#aqb-panel .aqb-nav-btn:hover:not(:disabled) { background: #2563eb; color: #fff; border-color: #2563eb; }',
+    '#aqb-panel .aqb-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }',
+    '#aqb-panel .aqb-nav-hint { font-size: 11px; color: #94a3b8; }',
     '#aqbCaptureOverlay {',
     '  position: fixed; inset: 0; z-index: 2147483646; cursor: crosshair;',
     '  background: rgba(0,0,0,0.3); display: none;',
@@ -213,7 +233,7 @@
     '    <span id="aqbStatusText">正在分析...</span>',
     '  </div>',
     '  <div class="aqb-results" id="aqbResults">',
-    '    <div class="aqb-empty">点击「截图」或「扫描」开始分析题目</div>',
+    '    <div class="aqb-empty">点击「截图」或「扫描」开始<br>扫描自动提取页面全部题目并批量分析</div>',
     '  </div>',
     '  <div class="aqb-settings" id="aqbSettings">',
     '    <div class="aqb-setting-row">',
@@ -466,8 +486,8 @@
 
     isAnalyzing = true;
     setButtonsDisabled(true);
-    showStatus(true, '正在扫描分析...');
-    elResults.innerHTML = '<div class="aqb-empty">正在提取页面题目并分析...</div>';
+    showStatus(true, '正在批量扫描分析页面题目...');
+    elResults.innerHTML = '<div class="aqb-empty">正在提取页面全部题目并批量分析...</div>';
 
     var body = JSON.stringify({
       text: text,
@@ -610,27 +630,51 @@
     }
 
     // 按题号排序
-    var questions = parsed.questions.slice().sort(function (a, b) {
+    allQuestions = parsed.questions.slice().sort(function (a, b) {
       var na = parseInt(a.questionNumber, 10) || 0;
       var nb = parseInt(b.questionNumber, 10) || 0;
       return na - nb;
     });
 
+    currentQIndex = 0;
+    showQuestion(0);
+  }
+
+  // ========== 题目导航 ==========
+  function showQuestion(idx) {
+    if (idx < 0 || idx >= allQuestions.length) return;
+    currentQIndex = idx;
+
+    var q = allQuestions[idx];
+    var total = allQuestions.length;
+
     var html = '';
-    questions.forEach(function (q, i) {
-      html += renderQuestionCard(q, i);
-    });
+
+    // 导航栏
+    if (total > 1) {
+      html += '<div class="aqb-nav-bar">';
+      html += '  <div class="aqb-nav-info">第 ' + (idx + 1) + '/' + total + ' 题</div>';
+      html += '  <div class="aqb-nav-btns">';
+      html += '    <button class="aqb-nav-btn" id="aqbNavPrev" ' + (idx === 0 ? 'disabled' : '') + '>上一题</button>';
+      html += '    <button class="aqb-nav-btn" id="aqbNavNext" ' + (idx === total - 1 ? 'disabled' : '') + '>下一题</button>';
+      html += '  </div>';
+      html += '</div>';
+      html += '<div class="aqb-nav-hint" style="padding:4px 12px;">空格键 / → 切换下一题，← 上一题</div>';
+    }
+
+    // 题目卡片
+    html += renderQuestionCard(q, idx, true);
 
     elResults.innerHTML = html;
 
-    // 绑定折叠
-    elResults.querySelectorAll('details').forEach(function (d) {
-      // 默认展开第一个
-      if (d.dataset.idx === '0') d.open = true;
-    });
+    // 绑定导航按钮
+    var navPrev = document.getElementById('aqbNavPrev');
+    var navNext = document.getElementById('aqbNavNext');
+    if (navPrev) navPrev.addEventListener('click', function () { showQuestion(currentQIndex - 1); });
+    if (navNext) navNext.addEventListener('click', function () { showQuestion(currentQIndex + 1); });
   }
 
-  function renderQuestionCard(q, idx) {
+  function renderQuestionCard(q, idx, autoExpand) {
     var typeClass = getTypeClass(q.questionType);
     var typeLabel = q.questionType || '未知题型';
 
@@ -664,9 +708,9 @@
       html += '<div class="aqb-q-answer">' + ICONS.check + ' 答案：' + escapeHtml(q.answer) + '</div>';
     }
 
-    // 解析（可折叠）
+    // 解析（可折叠，导航模式下自动展开）
     if (q.analysis) {
-      html += '<details class="aqb-q-analysis" data-idx="' + idx + '">';
+      html += '<details class="aqb-q-analysis" data-idx="' + idx + '"' + (autoExpand ? ' open' : '') + '>';
       html += '<summary>查看解析</summary>';
       html += '<p>' + escapeHtml(q.analysis) + '</p>';
       html += '</details>';
@@ -708,6 +752,32 @@
     div.textContent = String(text);
     return div.innerHTML;
   }
+
+  // ========== 键盘快捷键 ==========
+  document.addEventListener('keydown', function (e) {
+    // 面板隐藏时不响应
+    if (elPanel.style.display === 'none') return;
+    // 正在分析时不响应
+    if (isAnalyzing) return;
+    // 没有题目时不响应
+    if (allQuestions.length === 0) return;
+    // 在输入框/选择框中时不响应
+    var tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.target.isContentEditable) return;
+
+    if (e.code === 'Space' || e.code === 'ArrowRight') {
+      e.preventDefault();
+      if (currentQIndex < allQuestions.length - 1) {
+        showQuestion(currentQIndex + 1);
+      }
+    } else if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      if (currentQIndex > 0) {
+        showQuestion(currentQIndex - 1);
+      }
+    }
+  });
 
   // ========== 初始化提示 ==========
   console.log('[AI 题库助手] 悬浮面板已加载，API: ' + API_BASE);
