@@ -1,0 +1,14 @@
+{
+  "name": "ai-question-bank-assistant",
+  "version": "1.0.0",
+  "description": "AI 智能题库助手 - 学习辅助工具",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "coze-coding-dev-sdk": "latest",
+    "express": "^4.21.2"
+  }
+}

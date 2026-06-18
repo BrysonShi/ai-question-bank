@@ -3,31 +3,178 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="扣子编程，你的 AI 开发伙伴已就位" />
-    <title>扣子编程 - AI 开发伙伴</title>
-    <link rel="stylesheet" href="/styles/main.css" />
+    <meta name="description" content="AI 智能题库助手 - 注册会计师备考学习辅助工具" />
+    <title>AI 智能题库助手</title>
+    <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <div id="app">
-      <main class="main-wrapper">
-        <div class="content-container">
-          <img
-            src="https://lf-coze-web-cdn.coze.cn/obj/eden-cn/lm-lgvj/ljhwZthlaukjlkulzlp/coze-coding/icon/coze-coding.gif"
-            alt="扣子编程 Logo"
-            class="logo-image"
-          />
-          <div>
-            <div class="text-container">
-              <h1 class="heading">
-                应用开发中
-              </h1>
-              <p class="description">
-                请稍后，页面即将呈现
-              </p>
+      <!-- 顶部导航 -->
+      <header class="app-header">
+        <div class="header-top">
+          <div class="logo-area">
+            <div class="logo-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+              </svg>
+            </div>
+            <div class="logo-text">
+              <h1>AI 智能题库助手</h1>
+              <span class="subtitle">注册会计师备考辅助工具</span>
             </div>
           </div>
+          <div class="header-controls">
+            <label class="subject-label">学科</label>
+            <select id="subjectSelect" class="subject-select">
+              <option value="tax">税法</option>
+              <option value="accounting">会计</option>
+              <option value="audit">审计</option>
+              <option value="finance">财管</option>
+              <option value="strategy">战略</option>
+              <option value="economic_law">经济法</option>
+            </select>
+          </div>
         </div>
+        <nav class="tabs">
+          <button class="tab active" data-tab="analysis">题目解析</button>
+          <button class="tab" data-tab="wrong">错题本 <span id="wrongCount" class="badge hidden">0</span></button>
+          <button class="tab" data-tab="history">历史记录</button>
+        </nav>
+      </header>
+
+      <!-- 主内容区 -->
+      <main class="app-main">
+        <!-- Tab: 题目解析 -->
+        <section id="tab-analysis" class="tab-content active">
+          <!-- 上传区 -->
+          <div class="upload-section">
+            <div id="uploadZone" class="upload-zone">
+              <div class="upload-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
+              <p class="upload-title">点击、拖拽或 Ctrl+V 粘贴题目截图</p>
+              <p class="upload-hint">支持 JPG / PNG / WebP，最多 20 张</p>
+              <input type="file" id="fileInput" multiple accept="image/*" hidden />
+            </div>
+          </div>
+
+          <!-- 缩略图列表 -->
+          <div id="thumbnailList" class="thumbnail-list hidden"></div>
+
+          <!-- 操作栏 -->
+          <div id="actionBar" class="action-bar hidden">
+            <div class="action-left">
+              <span id="uploadCount" class="upload-count">已选 0 张</span>
+            </div>
+            <div class="action-right">
+              <button id="clearBtn" class="btn btn-secondary">清空</button>
+              <button id="analyzeBtn" class="btn btn-primary">开始解析</button>
+            </div>
+          </div>
+
+          <!-- 解析进度 -->
+          <div id="progressBar" class="progress-bar hidden">
+            <div class="progress-info">
+              <span id="progressText">正在解析...</span>
+              <span id="progressCount" class="progress-count"></span>
+            </div>
+            <div class="progress-track">
+              <div id="progressFill" class="progress-fill"></div>
+            </div>
+          </div>
+
+          <!-- 解析结果 -->
+          <div id="resultsContainer" class="results-container"></div>
+
+          <!-- 空状态 -->
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            </div>
+            <p class="empty-text">上传题目截图，AI 帮你解析</p>
+            <p class="empty-hint">支持多张图片批量解析，自动识别题号和题型</p>
+          </div>
+        </section>
+
+        <!-- Tab: 错题本 -->
+        <section id="tab-wrong" class="tab-content">
+          <div class="section-header">
+            <h2>错题本</h2>
+            <div class="section-actions">
+              <select id="wrongSubjectFilter" class="filter-select">
+                <option value="">全部学科</option>
+                <option value="tax">税法</option>
+                <option value="accounting">会计</option>
+                <option value="audit">审计</option>
+                <option value="finance">财管</option>
+                <option value="strategy">战略</option>
+                <option value="economic_law">经济法</option>
+              </select>
+              <button id="clearWrongBtn" class="btn btn-secondary btn-sm">清空错题本</button>
+            </div>
+          </div>
+          <div id="wrongBookContainer" class="results-container"></div>
+          <div id="wrongEmpty" class="empty-state">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+            <p class="empty-text">还没有错题</p>
+            <p class="empty-hint">在解析结果中点击星标，将题目加入错题本</p>
+          </div>
+        </section>
+
+        <!-- Tab: 历史记录 -->
+        <section id="tab-history" class="tab-content">
+          <div class="section-header">
+            <h2>历史记录</h2>
+            <div class="section-actions">
+              <button id="clearHistoryBtn" class="btn btn-secondary btn-sm">清空记录</button>
+            </div>
+          </div>
+          <div id="historyContainer" class="history-list"></div>
+          <div id="historyEmpty" class="empty-state">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <p class="empty-text">还没有历史记录</p>
+            <p class="empty-hint">解析完成的记录会自动保存在这里</p>
+          </div>
+        </section>
       </main>
     </div>
+
+    <!-- 图片查看器 -->
+    <div id="imageViewer" class="image-viewer hidden">
+      <div class="image-viewer-backdrop"></div>
+      <div class="image-viewer-content">
+        <img id="viewerImage" src="" alt="原图" />
+      </div>
+      <button class="image-viewer-close" id="closeViewer">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/app.js"></script>
   </body>
 </html>
