@@ -1055,8 +1055,9 @@ function initWidgetTab() {
     bookmarkletLink.style.opacity = '1';
     bookmarkletLink.style.pointerEvents = '';
     var scriptUrl = serverAddr + '/bookmarklet.js';
-    var code = "(function(){var s=document.createElement('script');s.src='" + scriptUrl + "?t=' + Date.now();s.onload=function(){window.__AQBBookMarklet && window.__AQBBookMarklet.init('" + serverAddr + "');};document.head.appendChild(s);})();";
-    bookmarkletLink.href = 'javascript:' + encodeURIComponent(code);
+    var code = "(function(){window.__aqbApiBase='" + serverAddr + "';var s=document.createElement('script');s.src='" + scriptUrl + "?t='+Date.now();document.head.appendChild(s);})();";
+    // 用 void(0) 包裹，防止页面跳转；不使用 encodeURIComponent，保留原始 JS 代码
+    bookmarkletLink.href = 'javascript:void(' + code + ')';
   }
 
   updateBookmarklet();
