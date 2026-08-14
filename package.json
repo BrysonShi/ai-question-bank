@@ -8,7 +8,9 @@
     "dev": "node server.js"
   },
   "dependencies": {
-    "coze-coding-dev-sdk": "latest",
     "express": "^4.21.2"
+  },
+  "optionalDependencies": {
+    "coze-coding-dev-sdk": "latest"
   }
 }
