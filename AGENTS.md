@@ -40,7 +40,13 @@ pnpm run start      # 等同于 node server.js
 ├── package.json    # 依赖配置
 ├── .coze           # Coze 沙箱配置
 ├── DESIGN.md       # 设计规范
-└── AGENTS.md       # 本文件
+├── AGENTS.md       # 本文件
+├── api/
+│   └── index.js    # Vercel Serverless 入口
+├── vercel.json     # Vercel 部署配置
+├── Dockerfile      # Docker 部署配置（Railway/Render）
+├── .dockerignore   # Docker 忽略文件
+└── .env.example    # 环境变量模板
 ```
 
 ## 后端 API
@@ -147,30 +153,59 @@ server.js 支持两种 LLM 调用模式，通过环境变量自动切换：
 
 ## 部署指南
 
-### 前端部署到 GitHub Pages
+### 方案一：Vercel 部署（推荐，免费）
+
+项目已包含 Vercel 配置文件（`vercel.json` + `api/index.js`），一键部署：
+
+1. 将项目推送到 GitHub 仓库
+2. 访问 [vercel.com](https://vercel.com)，导入仓库
+3. 在 Settings > Environment Variables 中设置：
+   - `LLM_API_KEY`：你的 API 密钥
+   - `LLM_BASE_URL`：API 地址（如 `https://api.openai.com/v1`）
+   - `LLM_MODEL`：模型名称（如 `gpt-4o`）
+4. 点击 Deploy，获得地址如 `https://your-app.vercel.app`
+
+### 方案二：Railway / Render 部署（Docker）
+
+项目已包含 `Dockerfile`，支持 Docker 部署：
+
+**Railway**：
+1. 访问 [railway.app](https://railway.app)，新建项目
+2. 连接 GitHub 仓库
+3. 在 Variables 中设置 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL`
+4. 自动检测 Dockerfile 并部署
+
+**Render**：
+1. 访问 [render.com](https://render.com)，新建 Web Service
+2. 连接 GitHub 仓库
+3. Build Command：`docker build -t app .`（或留空自动检测）
+4. 在 Environment 中设置环境变量
+
+### 方案三：自建服务器
+
+```bash
+# 克隆项目后
+cp .env.example .env
+# 编辑 .env 填写 LLM_API_KEY 等
+
+# Docker 方式
+docker build -t ai-question-bank .
+docker run -d -p 5000:5000 --env-file .env ai-question-bank
+
+# 或直接运行
+pnpm install
+node server.js
+```
+
+### 前端部署到 GitHub Pages（可选）
+
+如果后端已部署到线上，前端可单独部署到 GitHub Pages：
 
 1. 将 `index.html`、`style.css`、`app.js` 推送到 GitHub 仓库
 2. 在 GitHub 仓库 Settings > Pages 中启用 GitHub Pages
 3. 配置 API 地址（二选一）：
    - 修改 `app.js` 顶部的 `API_BASE` 常量
    - 在浏览器控制台执行 `localStorage.setItem('aqb_api_base', 'https://your-backend.example.com')`
-
-### 后端部署
-
-将 `server.js`、`package.json` 部署到任意 Node.js 主机（Vercel / Railway / Render / 云服务器）：
-
-```bash
-# 安装依赖
-pnpm install
-
-# 设置环境变量
-export LLM_API_KEY="your-api-key"
-export LLM_BASE_URL="https://api.openai.com/v1"    # 或其他兼容 API
-export LLM_MODEL="gpt-4o"                            # 或 glm-4v / qwen-vl 等
-
-# 启动服务
-node server.js
-```
 
 ### 各 LLM 提供商配置示例
 
