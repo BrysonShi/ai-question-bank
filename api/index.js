@@ -1,14 +1,4 @@
-// Vercel Serverless Function - 简化版测试
-import express from 'express';
-
-const app = express();
-
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: Date.now() });
-});
-
-app.get('/', (req, res) => {
-  res.send('AI Question Bank - Working!');
-});
+// Vercel Serverless Function - 导入完整 server.js 的 Express app
+import app from '../server.js';
 
 export default app;
