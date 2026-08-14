@@ -5,14 +5,20 @@ import { fileURLToPath } from 'url';
 // 双模式 LLM 支持：
 // 模式 1 (Coze 沙箱): 使用 coze-coding-dev-sdk，自动处理鉴权
 // 模式 2 (外部部署): 设置 LLM_API_KEY 环境变量，使用 OpenAI 兼容 API
-let cozeSDK = null;
-try {
-  cozeSDK = await import('coze-coding-dev-sdk');
-} catch (e) {
-  console.log('[AI Question Bank] Coze SDK not available, using direct API mode');
-}
-
 const USE_DIRECT_API = !!process.env.LLM_API_KEY;
+
+// 懒加载 Coze SDK（避免 Vercel serverless 超时）
+let cozeSDK = null;
+async function getCozeSDK() {
+  if (!cozeSDK && !USE_DIRECT_API) {
+    try {
+      cozeSDK = await import('coze-coding-dev-sdk');
+    } catch (e) {
+      console.log('[AI Question Bank] Coze SDK not available, using direct API mode');
+    }
+  }
+  return cozeSDK;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -142,7 +148,9 @@ async function* streamDirectAPI(messages, model, temperature) {
  * 模式 1: 使用 Coze SDK（沙箱环境）
  */
 async function* streamCozeSDK(messages, model, temperature, req) {
-  const { LLMClient, Config, HeaderUtils } = cozeSDK;
+  const sdk = await getCozeSDK();
+  if (!sdk) throw new Error('Coze SDK 不可用');
+  const { LLMClient, Config, HeaderUtils } = sdk;
   const config = new Config();
   const customHeaders = HeaderUtils.extractForwardHeaders(req.headers);
   const client = new LLMClient(config, customHeaders);
@@ -166,10 +174,13 @@ async function* streamCozeSDK(messages, model, temperature, req) {
 async function* streamLLM(messages, model, temperature, req) {
   if (USE_DIRECT_API) {
     yield* streamDirectAPI(messages, model, temperature);
-  } else if (cozeSDK) {
-    yield* streamCozeSDK(messages, model, temperature, req);
   } else {
-    throw new Error('未配置 LLM 服务：请安装 coze-coding-dev-sdk 或设置 LLM_API_KEY 环境变量');
+    const sdk = await getCozeSDK();
+    if (sdk) {
+      yield* streamCozeSDK(messages, model, temperature, req);
+    } else {
+      throw new Error('未配置 LLM 服务：请安装 coze-coding-dev-sdk 或设置 LLM_API_KEY 环境变量');
+    }
   }
 }
 
