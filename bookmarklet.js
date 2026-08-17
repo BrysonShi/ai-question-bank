@@ -549,11 +549,53 @@
     var text = mainEl ? mainEl.innerText : document.body.innerText;
     // 清理多余空白
     text = text.replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
-    // 限制长度避免 token 超限
-    if (text.length > 12000) {
-      text = text.substring(0, 12000) + '\n...(文本过长，已截断)';
-    }
     return text;
+  }
+
+  // 智能分块：按题号分割，避免在题目中间切断
+  function splitTextIntoChunks(text, maxChunkSize) {
+    if (text.length <= maxChunkSize) return [text];
+
+    var chunks = [];
+    var remaining = text;
+
+    while (remaining.length > 0) {
+      if (remaining.length <= maxChunkSize) {
+        chunks.push(remaining);
+        break;
+      }
+
+      // 在 maxChunkSize 附近找题号分割点
+      var cutPoint = maxChunkSize;
+      var searchStart = Math.max(0, cutPoint - 500);
+      var searchArea = remaining.substring(searchStart, cutPoint);
+
+      // 找最后一个题号模式（如 "12."、"13、"、"第12题"）
+      var lastMatch = null;
+      var patterns = [/\n(\d{1,3})[.、]\s/g, /\n第(\d{1,3})[题道]/g];
+      for (var p = 0; p < patterns.length; p++) {
+        var regex = patterns[p];
+        var match;
+        while ((match = regex.exec(searchArea)) !== null) {
+          lastMatch = match;
+        }
+      }
+
+      if (lastMatch) {
+        cutPoint = searchStart + lastMatch.index;
+      } else {
+        // 找不到题号，在最后一个换行处切断
+        var lastNewline = remaining.lastIndexOf('\n', cutPoint);
+        if (lastNewline > searchStart) {
+          cutPoint = lastNewline;
+        }
+      }
+
+      chunks.push(remaining.substring(0, cutPoint));
+      remaining = remaining.substring(cutPoint).trim();
+    }
+
+    return chunks;
   }
 
   function analyzePageText() {
@@ -563,32 +605,122 @@
       return;
     }
 
+    // 分块处理，每块 4000 字符
+    var chunks = splitTextIntoChunks(text, 4000);
+    var totalChunks = chunks.length;
+    var currentChunk = 0;
+    var allResults = [];
+
     isAnalyzing = true;
     setButtonsDisabled(true);
-    showStatus(true, '正在批量扫描分析页面题目...');
-    elResults.innerHTML = '<div class="aqb-empty">正在提取页面全部题目并批量分析...</div>';
+    showStatus(true, '正在批量扫描（0/' + totalChunks + '）...');
+    elResults.innerHTML = '<div class="aqb-empty">正在分批扫描页面题目，共 ' + totalChunks + ' 批...</div>';
 
-    var body = JSON.stringify({
-      text: text,
-      subject: currentSubject,
-      index: 0
-    });
-
-    fetch(API_BASE + '/api/analyze-text', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: body
-    })
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return readSSEStream(res, 0);
-      })
-      .catch(function (err) {
+    function processNextChunk() {
+      if (currentChunk >= totalChunks) {
+        // 所有批次完成，合并结果
         isAnalyzing = false;
         setButtonsDisabled(false);
         showStatus(false);
-        elResults.innerHTML = '<div class="aqb-empty" style="color:#dc2626">分析失败：' + escapeHtml(err.message) + '</div>';
+
+        if (allResults.length === 0) {
+          elResults.innerHTML = '<div class="aqb-empty">未识别到题目</div>';
+          return;
+        }
+
+        // 合并所有结果并显示
+        var mergedHtml = '';
+        allResults.forEach(function (html) {
+          mergedHtml += html;
+        });
+        elResults.innerHTML = mergedHtml;
+
+        // 绑定折叠
+        elResults.querySelectorAll('details').forEach(function (d) {
+          if (d.dataset.idx === '0') d.open = true;
+        });
+        return;
+      }
+
+      currentChunk++;
+      showStatus(true, '正在批量扫描（' + currentChunk + '/' + totalChunks + '）...');
+
+      var body = JSON.stringify({
+        text: chunks[currentChunk - 1],
+        subject: currentSubject,
+        index: 0
       });
+
+      fetch(API_BASE + '/api/analyze-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return readSSEStreamForScan(res, currentChunk, totalChunks);
+        })
+        .then(function (html) {
+          if (html) allResults.push(html);
+          processNextChunk();
+        })
+        .catch(function (err) {
+          isAnalyzing = false;
+          setButtonsDisabled(false);
+          showStatus(false);
+          elResults.innerHTML = '<div class="aqb-empty" style="color:#dc2626">第 ' + currentChunk + ' 批分析失败：' + escapeHtml(err.message) + '</div>';
+        });
+    }
+
+    processNextChunk();
+  }
+
+  // SSE 流式读取（扫描模式，返回 HTML）
+  function readSSEStreamForScan(response, chunkIndex, totalChunks) {
+    return new Promise(function (resolve, reject) {
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+      var fullContent = '';
+
+      function processLine(line) {
+        if (line.indexOf('data: ') !== 0) return;
+        var dataStr = line.slice(6).trim();
+        if (!dataStr || dataStr === '[DONE]') return;
+
+        try {
+          var data = JSON.parse(dataStr);
+
+          if (data.type === 'chunk') {
+            fullContent += data.content;
+          } else if (data.type === 'complete') {
+            var html = renderResultsToHtml(data.raw, 0);
+            resolve(html);
+          } else if (data.type === 'error') {
+            reject(new Error(data.message || '分析失败'));
+          }
+        } catch (e) {
+          // 忽略解析错误
+        }
+      }
+
+      function pump() {
+        reader.read().then(function (result) {
+          if (result.done) {
+            if (buffer.length > 0) processLine(buffer);
+            resolve(null);
+            return;
+          }
+          buffer += decoder.decode(result.value, { stream: true });
+          var lines = buffer.split('\n');
+          buffer = lines.pop();
+          lines.forEach(processLine);
+          pump();
+        }).catch(reject);
+      }
+
+      pump();
+    });
   }
 
   // ========== 图片分析 ==========
@@ -717,6 +849,33 @@
 
     currentQIndex = 0;
     showQuestion(0);
+  }
+
+  // 扫描模式：返回 HTML 字符串（不直接设置 innerHTML）
+  function renderResultsToHtml(rawText, index) {
+    var parsed = null;
+    try {
+      var cleaned = rawText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch (e) {
+      return '<div class="aqb-empty" style="color:#dc2626">解析结果格式异常</div>';
+    }
+
+    if (!parsed.questions || parsed.questions.length === 0) {
+      return '<div class="aqb-empty">' + escapeHtml(parsed.error || '未识别到题目') + '</div>';
+    }
+
+    var questions = parsed.questions.slice().sort(function (a, b) {
+      var na = parseInt(a.questionNumber, 10) || 0;
+      var nb = parseInt(b.questionNumber, 10) || 0;
+      return na - nb;
+    });
+
+    var html = '';
+    questions.forEach(function (q, i) {
+      html += renderQuestionCard(q, i, true);
+    });
+    return html;
   }
 
   // ========== 题目导航 ==========
