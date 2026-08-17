@@ -383,7 +383,7 @@
   var selectBox = null;
 
   elBtnCapture.addEventListener('click', function () {
-    if (isAnalyzing || isSelecting) return;
+    if (isSelecting) return;
     startSelection();
   });
 
@@ -496,7 +496,19 @@
       });
 
       var dataUrl = canvas.toDataURL('image/png');
-      analyzeImage(dataUrl);
+
+      // 如果正在扫描，等待完成后解析
+      if (isAnalyzing) {
+        showStatus(true, '截图完成，等待扫描结束后解析...');
+        var waitInterval = setInterval(function () {
+          if (!isAnalyzing) {
+            clearInterval(waitInterval);
+            analyzeImage(dataUrl);
+          }
+        }, 500);
+      } else {
+        analyzeImage(dataUrl);
+      }
 
     } catch (err) {
       console.error('[AQ Bookmarklet] Capture error:', err);
@@ -508,7 +520,6 @@
   // ========== 粘贴功能 ==========
   document.addEventListener('paste', function (e) {
     if (elPanel.style.display === 'none') return;
-    if (isAnalyzing) return;
 
     var items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
@@ -518,7 +529,18 @@
         var blob = items[i].getAsFile();
         var reader = new FileReader();
         reader.onload = function (ev) {
-          analyzeImage(ev.target.result);
+          var imgData = ev.target.result;
+          if (isAnalyzing) {
+            showStatus(true, '图片已粘贴，等待扫描结束后解析...');
+            var waitInterval = setInterval(function () {
+              if (!isAnalyzing) {
+                clearInterval(waitInterval);
+                analyzeImage(imgData);
+              }
+            }, 500);
+          } else {
+            analyzeImage(imgData);
+          }
         };
         reader.readAsDataURL(blob);
         e.preventDefault();
@@ -529,7 +551,7 @@
 
   // ========== 自动扫描功能（提取页面文本） ==========
   elBtnScan.addEventListener('click', function () {
-    if (isAnalyzing) return;
+    if (isAnalyzing || isSelecting) return;
     analyzePageText();
   });
 
