@@ -198,9 +198,6 @@
     '  border-radius: 4px; font-size: 12px; cursor: pointer;',
     '}'
   ].join('\n');
-  document.head.appendChild(styleEl);
-
-  // ========== SVG 图标 ==========
   var ICONS = {
     book: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
@@ -231,7 +228,6 @@
     '    <div class="aqb-actions">',
     '      <button class="aqb-action-btn primary" id="aqbBtnCapture">' + ICONS.camera + ' 截图</button>',
     '      <button class="aqb-action-btn" id="aqbBtnScan">' + ICONS.scan + ' 扫描</button>',
-    '      <button class="aqb-action-btn" id="aqbBtnCompanyAI">🏢 公司 AI</button>',
     '    </div>',
     '  </div>',
     '  <div class="aqb-status" id="aqbStatus">',
@@ -240,13 +236,6 @@
     '  </div>',
     '  <div class="aqb-results" id="aqbResults">',
     '    <div class="aqb-empty">点击「截图」或「扫描」开始<br>扫描自动提取页面全部题目并批量分析</div>',
-    '  </div>',
-    '  <div class="aqb-company-ai" id="aqbCompanyAI" style="display:none;">',
-    '    <div class="aqb-company-ai-header">',
-    '      <span>EYC.ai - 公司 AI</span>',
-    '      <button class="aqb-close-company-ai" id="aqbCloseCompanyAI"></button>',
-    '    </div>',
-    '    <iframe src="https://eyc-ai.ey.com.cn/conversation/chat" style="width:100%;height:100%;border:none;"></iframe>',
     '  </div>',
     '  <div class="aqb-settings" id="aqbSettings">',
     '    <div class="aqb-setting-row">',
@@ -270,9 +259,6 @@
   var elSubject = document.getElementById('aqbSubject');
   var elBtnCapture = document.getElementById('aqbBtnCapture');
   var elBtnScan = document.getElementById('aqbBtnScan');
-  var elBtnCompanyAI = document.getElementById('aqbBtnCompanyAI');
-  var elCompanyAI = document.getElementById('aqbCompanyAI');
-  var elCloseCompanyAI = document.getElementById('aqbCloseCompanyAI');
   var elBtnSettings = document.getElementById('aqbBtnSettings');
   var elBtnMin = document.getElementById('aqbBtnMin');
   var elBtnClose = document.getElementById('aqbBtnClose');
@@ -546,19 +532,6 @@
     if (isAnalyzing) return;
     analyzePageText();
   });
-
-  // ========== 公司 AI（iframe 嵌入） ==========
-  if (elBtnCompanyAI && elCompanyAI && elCloseCompanyAI) {
-    elBtnCompanyAI.addEventListener('click', function () {
-      elCompanyAI.style.display = 'block';
-      elBtnCompanyAI.classList.add('active');
-    });
-
-    elCloseCompanyAI.addEventListener('click', function () {
-      elCompanyAI.style.display = 'none';
-      elBtnCompanyAI.classList.remove('active');
-    });
-  }
 
   function extractPageText() {
     // 尝试找到主要内容区域
