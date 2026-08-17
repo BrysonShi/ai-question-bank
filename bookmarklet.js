@@ -375,9 +375,94 @@
     elBtnScan.disabled = disabled;
   }
 
-  // ========== 截图功能（html2canvas，不触发切屏监控） ==========
-  elBtnCapture.addEventListener('click', async function () {
-    if (isAnalyzing) return;
+  // ========== 截图功能（html2canvas + 手动框选，不触发切屏监控） ==========
+  var isSelecting = false;
+  var selectStartX = 0, selectStartY = 0;
+  var selectBox = null;
+
+  elBtnCapture.addEventListener('click', function () {
+    if (isAnalyzing || isSelecting) return;
+    startSelection();
+  });
+
+  function startSelection() {
+    isSelecting = true;
+    showStatus(true, '拖拽鼠标框选题目区域...');
+
+    // 创建半透明遮罩
+    var overlay = document.createElement('div');
+    overlay.id = 'aqb-select-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);cursor:crosshair;z-index:2147483646;';
+    document.body.appendChild(overlay);
+
+    // 创建选择框
+    selectBox = document.createElement('div');
+    selectBox.style.cssText = 'position:fixed;border:2px dashed #2563eb;background:rgba(37,99,235,0.1);pointer-events:none;z-index:2147483647;display:none;';
+    document.body.appendChild(selectBox);
+
+    // 监听鼠标事件
+    overlay.addEventListener('mousedown', function (e) {
+      selectStartX = e.clientX;
+      selectStartY = e.clientY;
+      selectBox.style.left = selectStartX + 'px';
+      selectBox.style.top = selectStartY + 'px';
+      selectBox.style.width = '0px';
+      selectBox.style.height = '0px';
+      selectBox.style.display = 'block';
+    });
+
+    overlay.addEventListener('mousemove', function (e) {
+      if (selectBox.style.display === 'none') return;
+      var currentX = e.clientX;
+      var currentY = e.clientY;
+      var left = Math.min(selectStartX, currentX);
+      var top = Math.min(selectStartY, currentY);
+      var width = Math.abs(currentX - selectStartX);
+      var height = Math.abs(currentY - selectStartY);
+      selectBox.style.left = left + 'px';
+      selectBox.style.top = top + 'px';
+      selectBox.style.width = width + 'px';
+      selectBox.style.height = height + 'px';
+    });
+
+    overlay.addEventListener('mouseup', function (e) {
+      if (selectBox.style.display === 'none') {
+        cancelSelection();
+        return;
+      }
+      var left = parseInt(selectBox.style.left);
+      var top = parseInt(selectBox.style.top);
+      var width = parseInt(selectBox.style.width);
+      var height = parseInt(selectBox.style.height);
+      if (width < 50 || height < 50) {
+        cancelSelection();
+        return;
+      }
+      finishSelection(left, top, width, height);
+    });
+
+    // ESC 取消
+    overlay.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cancelSelection();
+    });
+    overlay.setAttribute('tabindex', '-1');
+    overlay.focus();
+  }
+
+  function cancelSelection() {
+    isSelecting = false;
+    var overlay = document.getElementById('aqb-select-overlay');
+    if (overlay) overlay.remove();
+    if (selectBox) selectBox.remove();
+    selectBox = null;
+    showStatus(false);
+  }
+
+  async function finishSelection(x, y, width, height) {
+    var overlay = document.getElementById('aqb-select-overlay');
+    if (overlay) overlay.remove();
+    if (selectBox) selectBox.remove();
+    selectBox = null;
 
     try {
       // 动态加载 html2canvas
@@ -392,15 +477,19 @@
         });
       }
 
-      showStatus(true, '正在截取当前页面...');
+      showStatus(true, '正在截取所选区域...');
 
-      // 使用 html2canvas 对当前页面截图
+      // 使用 html2canvas 对选定区域截图
       var canvas = await window.html2canvas(document.body, {
         useCORS: true,
         allowTaint: true,
         scale: 2,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        x: x,
+        y: y,
+        width: width,
+        height: height
       });
 
       var dataUrl = canvas.toDataURL('image/png');
@@ -411,7 +500,7 @@
       showStatus(false);
       elResults.innerHTML = '<div class="aqb-empty" style="color:#dc2626">截图失败：' + escapeHtml(err.message) + '<br>请尝试使用「扫描」或手动截图后粘贴</div>';
     }
-  });
+  }
 
   // ========== 粘贴功能 ==========
   document.addEventListener('paste', function (e) {
