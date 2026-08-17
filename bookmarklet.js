@@ -375,51 +375,41 @@
     elBtnScan.disabled = disabled;
   }
 
-  // ========== 截图功能（Screen Capture API） ==========
+  // ========== 截图功能（html2canvas，不触发切屏监控） ==========
   elBtnCapture.addEventListener('click', async function () {
     if (isAnalyzing) return;
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      alert('当前浏览器不支持屏幕截图功能，请使用「扫描」或手动截图后粘贴。');
-      return;
-    }
-
     try {
-      var stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always' },
-        audio: false
+      // 动态加载 html2canvas
+      if (!window.html2canvas) {
+        showStatus(true, '正在加载截图组件...');
+        await new Promise(function (resolve, reject) {
+          var script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+
+      showStatus(true, '正在截取当前页面...');
+
+      // 使用 html2canvas 对当前页面截图
+      var canvas = await window.html2canvas(document.body, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2,
+        logging: false,
+        backgroundColor: '#ffffff'
       });
-
-      var video = document.createElement('video');
-      video.srcObject = stream;
-      video.style.position = 'fixed';
-      video.style.top = '-9999px';
-      document.body.appendChild(video);
-
-      await new Promise(function (resolve) {
-        video.onloadedmetadata = function () { video.play(); resolve(); };
-      });
-
-      // 等一帧确保画面渲染
-      await new Promise(function (r) { setTimeout(r, 200); });
-
-      var canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
-
-      // 停止屏幕共享
-      stream.getTracks().forEach(function (t) { t.stop(); });
-      document.body.removeChild(video);
 
       var dataUrl = canvas.toDataURL('image/png');
       analyzeImage(dataUrl);
 
     } catch (err) {
-      if (err.name !== 'NotAllowedError') {
-        console.error('[AQ Bookmarklet] Capture error:', err);
-      }
+      console.error('[AQ Bookmarklet] Capture error:', err);
+      showStatus(false);
+      elResults.innerHTML = '<div class="aqb-empty" style="color:#dc2626">截图失败：' + escapeHtml(err.message) + '<br>请尝试使用「扫描」或手动截图后粘贴</div>';
     }
   });
 
