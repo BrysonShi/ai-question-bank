@@ -173,6 +173,11 @@
     '#aqb-panel .aqb-nav-btn:hover:not(:disabled) { background: #2563eb; color: #fff; border-color: #2563eb; }',
     '#aqb-panel .aqb-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }',
     '#aqb-panel .aqb-nav-hint { font-size: 11px; color: #94a3b8; }',
+    '#aqb-panel .aqb-company-ai {',
+    '  flex: 1; border: none; width: 100%; min-height: 400px;',
+    '  display: none; background: #fff;',
+    '}',
+    '#aqb-panel .aqb-company-ai.active { display: block; }',
     '#aqbCaptureOverlay {',
     '  position: fixed; inset: 0; z-index: 2147483646; cursor: crosshair;',
     '  background: rgba(0,0,0,0.3); display: none;',
@@ -226,6 +231,7 @@
     '    <div class="aqb-actions">',
     '      <button class="aqb-action-btn primary" id="aqbBtnCapture">' + ICONS.camera + ' 截图</button>',
     '      <button class="aqb-action-btn" id="aqbBtnScan">' + ICONS.scan + ' 扫描</button>',
+    '      <button class="aqb-action-btn" id="aqbBtnCompanyAI">🏢 公司 AI</button>',
     '    </div>',
     '  </div>',
     '  <div class="aqb-status" id="aqbStatus">',
@@ -234,6 +240,13 @@
     '  </div>',
     '  <div class="aqb-results" id="aqbResults">',
     '    <div class="aqb-empty">点击「截图」或「扫描」开始<br>扫描自动提取页面全部题目并批量分析</div>',
+    '  </div>',
+    '  <div class="aqb-company-ai" id="aqbCompanyAI" style="display:none;">',
+    '    <div class="aqb-company-ai-header">',
+    '      <span>EYC.ai - 公司 AI</span>',
+    '      <button class="aqb-close-company-ai" id="aqbCloseCompanyAI"></button>',
+    '    </div>',
+    '    <iframe src="https://eyc-ai.ey.com.cn/conversation/chat" style="width:100%;height:100%;border:none;"></iframe>',
     '  </div>',
     '  <div class="aqb-settings" id="aqbSettings">',
     '    <div class="aqb-setting-row">',
@@ -257,6 +270,9 @@
   var elSubject = document.getElementById('aqbSubject');
   var elBtnCapture = document.getElementById('aqbBtnCapture');
   var elBtnScan = document.getElementById('aqbBtnScan');
+  var elBtnCompanyAI = document.getElementById('aqbBtnCompanyAI');
+  var elCompanyAI = document.getElementById('aqbCompanyAI');
+  var elCloseCompanyAI = document.getElementById('aqbCloseCompanyAI');
   var elBtnSettings = document.getElementById('aqbBtnSettings');
   var elBtnMin = document.getElementById('aqbBtnMin');
   var elBtnClose = document.getElementById('aqbBtnClose');
@@ -530,6 +546,19 @@
     if (isAnalyzing) return;
     analyzePageText();
   });
+
+  // ========== 公司 AI（iframe 嵌入） ==========
+  if (elBtnCompanyAI && elCompanyAI && elCloseCompanyAI) {
+    elBtnCompanyAI.addEventListener('click', function () {
+      elCompanyAI.style.display = 'block';
+      elBtnCompanyAI.classList.add('active');
+    });
+
+    elCloseCompanyAI.addEventListener('click', function () {
+      elCompanyAI.style.display = 'none';
+      elBtnCompanyAI.classList.remove('active');
+    });
+  }
 
   function extractPageText() {
     // 尝试找到主要内容区域
