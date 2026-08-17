@@ -552,48 +552,53 @@
     return text;
   }
 
-  // 智能分块：按题号分割，避免在题目中间切断
-  function splitTextIntoChunks(text, maxChunkSize) {
-    if (text.length <= maxChunkSize) return [text];
-
+  // 按题目边界分批，确保每批都是完整的题目
+  function splitByQuestions(text, maxChunkSize) {
     var chunks = [];
-    var remaining = text;
-
-    while (remaining.length > 0) {
-      if (remaining.length <= maxChunkSize) {
-        chunks.push(remaining);
-        break;
-      }
-
-      // 在 maxChunkSize 附近找题号分割点
-      var cutPoint = maxChunkSize;
-      var searchStart = Math.max(0, cutPoint - 500);
-      var searchArea = remaining.substring(searchStart, cutPoint);
-
-      // 找最后一个题号模式（如 "12."、"13、"、"第12题"）
-      var lastMatch = null;
-      var patterns = [/\n(\d{1,3})[.、]\s/g, /\n第(\d{1,3})[题道]/g];
-      for (var p = 0; p < patterns.length; p++) {
-        var regex = patterns[p];
-        var match;
-        while ((match = regex.exec(searchArea)) !== null) {
-          lastMatch = match;
-        }
-      }
-
-      if (lastMatch) {
-        cutPoint = searchStart + lastMatch.index;
-      } else {
-        // 找不到题号，在最后一个换行处切断
-        var lastNewline = remaining.lastIndexOf('\n', cutPoint);
-        if (lastNewline > searchStart) {
-          cutPoint = lastNewline;
-        }
-      }
-
-      chunks.push(remaining.substring(0, cutPoint));
-      remaining = remaining.substring(cutPoint).trim();
+    // 匹配题号开头：1. 2. 3. 或 1、2、3、或 第 1 题 第 2 题
+    var questionPattern = /(?:^|\n)(\d{1,3})[.、]\s|第\d{1,3}[题道]/g;
+    var matches = [];
+    var match;
+    while ((match = questionPattern.exec(text)) !== null) {
+      matches.push(match.index);
     }
+
+    if (matches.length === 0) {
+      // 找不到题号，按换行符分割
+      var lines = text.split('\n');
+      var currentChunk = '';
+      for (var i = 0; i < lines.length; i++) {
+        if (currentChunk.length + lines[i].length > maxChunkSize && currentChunk.length > 0) {
+          chunks.push(currentChunk.trim());
+          currentChunk = lines[i];
+        } else {
+          currentChunk += (currentChunk ? '\n' : '') + lines[i];
+        }
+      }
+      if (currentChunk.trim()) chunks.push(currentChunk.trim());
+      return chunks;
+    }
+
+    // 按题号分割成单独的题目
+    var questions = [];
+    for (var i = 0; i < matches.length; i++) {
+      var start = matches[i];
+      var end = (i + 1 < matches.length) ? matches[i + 1] : text.length;
+      var q = text.substring(start, end).trim();
+      if (q) questions.push(q);
+    }
+
+    // 把完整的题目组合成批次
+    var currentBatch = '';
+    for (var i = 0; i < questions.length; i++) {
+      if (currentBatch.length + questions[i].length > maxChunkSize && currentBatch.length > 0) {
+        chunks.push(currentBatch.trim());
+        currentBatch = questions[i];
+      } else {
+        currentBatch += (currentBatch ? '\n\n' : '') + questions[i];
+      }
+    }
+    if (currentBatch.trim()) chunks.push(currentBatch.trim());
 
     return chunks;
   }
@@ -605,8 +610,8 @@
       return;
     }
 
-    // 分块处理，每块 4000 字符
-    var chunks = splitTextIntoChunks(text, 4000);
+    // 按题目边界分批，每批 4000 字符
+    var chunks = splitByQuestions(text, 4000);
     var totalChunks = chunks.length;
     var currentChunk = 0;
     var allResults = [];
