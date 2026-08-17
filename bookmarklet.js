@@ -459,6 +459,7 @@
   }
 
   async function finishSelection(x, y, width, height) {
+    isSelecting = false;
     var overlay = document.getElementById('aqb-select-overlay');
     if (overlay) overlay.remove();
     if (selectBox) selectBox.remove();
