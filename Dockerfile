@@ -12,9 +12,8 @@ RUN npm install
 # 复制代码
 COPY . .
 
-# 端口通过环境变量 DEPLOY_RUN_PORT 配置
+# 端口通过环境变量配置（Railway 用 PORT，沙箱用 DEPLOY_RUN_PORT）
 ENV NODE_ENV=production
-ENV DEPLOY_RUN_PORT=5000
 
 EXPOSE 5000
 
