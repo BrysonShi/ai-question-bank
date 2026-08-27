@@ -2,10 +2,23 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// 错误处理
+process.on('uncaughtException', (err) => {
+  console.error('[AI Question Bank] Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[AI Question Bank] Unhandled Rejection:', reason);
+});
+
 // 双模式 LLM 支持：
 // 模式 1 (Coze 沙箱): 使用 coze-coding-dev-sdk，自动处理鉴权
 // 模式 2 (外部部署): 设置 LLM_API_KEY 环境变量，使用 OpenAI 兼容 API
 const USE_DIRECT_API = !!process.env.LLM_API_KEY;
+
+console.log('[AI Question Bank] Starting server...');
+console.log('[AI Question Bank] LLM_API_KEY:', USE_DIRECT_API ? 'set' : 'not set');
+console.log('[AI Question Bank] PORT:', process.env.PORT || process.env.DEPLOY_RUN_PORT || 5000);
 
 // 懒加载 Coze SDK（避免 Vercel serverless 超时）
 let cozeSDK = null;
