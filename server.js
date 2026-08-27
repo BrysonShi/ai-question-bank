@@ -368,12 +368,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-// 启动服务（被 Vercel/api/index.js 导入时不监听，其他情况都监听）
-const isVercel = !!process.env.VERCEL;
-if (!isVercel) {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[AI Question Bank] Server running on http://0.0.0.0:${PORT}`);
-  });
-}
+// 启动服务
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[AI Question Bank] Server running on http://0.0.0.0:${PORT}`);
+});
 
 export default app;
