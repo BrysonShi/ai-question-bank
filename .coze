@@ -9,5 +9,5 @@ build = [ "pnpm", "install" ]
 run = [ "sh", "-c", "node server.js" ]
 
 [deploy]
-build = [ "pnpm", "install" ]
-run = [ "sh", "-c", "node server.js" ]
+build = [ "sh", "-c", "command -v pnpm >/dev/null 2>&1 && pnpm install || npm install --omit=dev" ]
+run = [ "sh", "-c", "test -d node_modules || npm install --omit=dev; exec node server.js" ]
