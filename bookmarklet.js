@@ -30,6 +30,13 @@
   var allQuestions = [];
   var currentQIndex = 0;
 
+  // LLM 配置（从 localStorage 读取）
+  var llmConfig = {};
+  try {
+    var raw = localStorage.getItem('aqb_llm_config');
+    if (raw) llmConfig = JSON.parse(raw);
+  } catch (e) { /* ignore */ }
+
   var SUBJECTS = {
     tax: '税法',
     accounting: '会计',
@@ -241,7 +248,21 @@
     '    <div class="aqb-setting-row">',
     '      <span class="aqb-setting-label">后端地址</span>',
     '      <input type="text" class="aqb-setting-input" id="aqbApiInput" value="' + API_BASE + '" placeholder="https://your-backend.com" />',
-    '      <button class="aqb-setting-save" id="aqbSaveSettings">保存</button>',
+    '    </div>',
+    '    <div class="aqb-setting-row">',
+    '      <span class="aqb-setting-label">API Key</span>',
+    '      <input type="password" class="aqb-setting-input" id="aqbLlmKeyInput" placeholder="sk-xxx（留空使用服务端默认）" />',
+    '    </div>',
+    '    <div class="aqb-setting-row">',
+    '      <span class="aqb-setting-label">Base URL</span>',
+    '      <input type="text" class="aqb-setting-input" id="aqbLlmUrlInput" placeholder="https://...（留空使用服务端默认）" />',
+    '    </div>',
+    '    <div class="aqb-setting-row">',
+    '      <span class="aqb-setting-label">模型名称</span>',
+    '      <input type="text" class="aqb-setting-input" id="aqbLlmModelInput" placeholder="qwen-vl-max（留空使用服务端默认）" />',
+    '    </div>',
+    '    <div class="aqb-setting-row" style="justify-content:flex-end">',
+    '      <button class="aqb-setting-save" id="aqbSaveSettings">保存配置</button>',
     '    </div>',
     '  </div>',
     '</div>'
@@ -267,8 +288,16 @@
   var elResults = document.getElementById('aqbResults');
   var elSettings = document.getElementById('aqbSettings');
   var elApiInput = document.getElementById('aqbApiInput');
+  var elLlmKeyInput = document.getElementById('aqbLlmKeyInput');
+  var elLlmUrlInput = document.getElementById('aqbLlmUrlInput');
+  var elLlmModelInput = document.getElementById('aqbLlmModelInput');
   var elSaveSettings = document.getElementById('aqbSaveSettings');
   var elOverlay = document.getElementById('aqbCaptureOverlay');
+
+  // 初始化 LLM 配置输入框
+  if (elLlmKeyInput && llmConfig.apiKey) elLlmKeyInput.value = llmConfig.apiKey;
+  if (elLlmUrlInput && llmConfig.baseUrl) elLlmUrlInput.value = llmConfig.baseUrl;
+  if (elLlmModelInput && llmConfig.model) elLlmModelInput.value = llmConfig.model;
 
   // ========== 拖拽功能 ==========
   var dragData = null;
@@ -351,10 +380,27 @@
     if (val) {
       API_BASE = val;
       localStorage.setItem('aqb_api_base', val);
-      elSettings.classList.remove('active');
-      showStatus(false);
-      elResults.innerHTML = '<div class="aqb-empty">后端地址已更新，点击「截图」或「扫描」开始</div>';
     }
+
+    // 保存 LLM 配置
+    var llmCfg = {};
+    var key = elLlmKeyInput ? elLlmKeyInput.value.trim() : '';
+    var url = elLlmUrlInput ? elLlmUrlInput.value.trim() : '';
+    var model = elLlmModelInput ? elLlmModelInput.value.trim() : '';
+    if (key) llmCfg.apiKey = key;
+    if (url) llmCfg.baseUrl = url;
+    if (model) llmCfg.model = model;
+    if (Object.keys(llmCfg).length > 0) {
+      localStorage.setItem('aqb_llm_config', JSON.stringify(llmCfg));
+      llmConfig = llmCfg;
+    } else {
+      localStorage.removeItem('aqb_llm_config');
+      llmConfig = {};
+    }
+
+    elSettings.classList.remove('active');
+    showStatus(false);
+    elResults.innerHTML = '<div class="aqb-empty">配置已保存，点击「截图」或「扫描」开始</div>';
   });
 
   elSubject.addEventListener('change', function () {
@@ -683,7 +729,12 @@
 
       fetch(API_BASE + '/api/analyze-text', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign(
+          { 'Content-Type': 'application/json' },
+          llmConfig.apiKey ? { 'X-LLM-API-Key': llmConfig.apiKey } : {},
+          llmConfig.baseUrl ? { 'X-LLM-Base-URL': llmConfig.baseUrl } : {},
+          llmConfig.model ? { 'X-LLM-Model': llmConfig.model } : {}
+        ),
         body: body
       })
         .then(function (res) {
@@ -768,7 +819,12 @@
 
     fetch(API_BASE + '/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        llmConfig.apiKey ? { 'X-LLM-API-Key': llmConfig.apiKey } : {},
+        llmConfig.baseUrl ? { 'X-LLM-Base-URL': llmConfig.baseUrl } : {},
+        llmConfig.model ? { 'X-LLM-Model': llmConfig.model } : {}
+      ),
       body: body
     })
       .then(function (res) {
