@@ -14,10 +14,21 @@ process.on('unhandledRejection', (reason, promise) => {
 // 双模式 LLM 支持：
 // 模式 1 (Coze 沙箱): 使用 coze-coding-dev-sdk，自动处理鉴权
 // 模式 2 (外部部署): 设置 LLM_API_KEY 环境变量，使用 OpenAI 兼容 API
-const USE_DIRECT_API = !!process.env.LLM_API_KEY;
+
+// 默认 LLM 配置（通义千问 Token Plan）
+const DEFAULT_LLM_API_KEY = 'sk-sp-H.DUXEPM.8SIW.MEUCIHpRlIkI0Eal9jB6-FSvy2Ab0D64hA8h1f6MjtzH7KF7AiEAgSn1gxgIAlQwt5_UILgUj3--g_HCesUbsKAssL17W8M';
+const DEFAULT_LLM_BASE_URL = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';
+const DEFAULT_LLM_MODEL = 'qwen3.6-flash';
+
+const LLM_API_KEY = process.env.LLM_API_KEY || DEFAULT_LLM_API_KEY;
+const LLM_BASE_URL = process.env.LLM_BASE_URL || DEFAULT_LLM_BASE_URL;
+const LLM_MODEL = process.env.LLM_MODEL || DEFAULT_LLM_MODEL;
+const USE_DIRECT_API = true; // 始终使用直接 API 模式（有默认配置）
 
 console.log('[AI Question Bank] Starting server...');
-console.log('[AI Question Bank] LLM_API_KEY:', USE_DIRECT_API ? 'set' : 'not set');
+console.log('[AI Question Bank] LLM_API_KEY:', LLM_API_KEY ? 'set' : 'not set');
+console.log('[AI Question Bank] LLM_BASE_URL:', LLM_BASE_URL);
+console.log('[AI Question Bank] LLM_MODEL:', LLM_MODEL);
 console.log('[AI Question Bank] PORT:', process.env.PORT || process.env.DEPLOY_RUN_PORT || 5000);
 
 // 懒加载 Coze SDK（避免 Vercel serverless 超时）
@@ -99,9 +110,7 @@ const SUBJECTS = {
 };
 
 // 默认模型（多模态，支持图片理解）
-const DEFAULT_MODEL = USE_DIRECT_API
-  ? (process.env.LLM_MODEL || 'gpt-4o')
-  : 'doubao-seed-2-0-pro-260215';
+const DEFAULT_MODEL = LLM_MODEL;
 
 // ========== LLM 流式调用（双模式） ==========
 
@@ -109,9 +118,9 @@ const DEFAULT_MODEL = USE_DIRECT_API
  * 模式 2: 直接调用 OpenAI 兼容 API（用于外部部署）
  */
 async function* streamDirectAPI(messages, model, temperature) {
-  const baseUrl = (process.env.LLM_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-  const apiKey = process.env.LLM_API_KEY;
-  const modelName = model || process.env.LLM_MODEL || 'gpt-4o';
+  const baseUrl = LLM_BASE_URL.replace(/\/$/, '');
+  const apiKey = LLM_API_KEY;
+  const modelName = model || LLM_MODEL;
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
