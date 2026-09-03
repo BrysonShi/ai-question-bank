@@ -340,7 +340,10 @@ async function analyzeImage(image) {
   try {
     const response = await fetch(`${API_BASE}/api/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getLLMHeaders()
+      },
       body: JSON.stringify({
         image: image.dataUrl,
         subject: state.subject,
@@ -950,8 +953,106 @@ function saveSettings() {
 }
 
 // ========== Init ==========
+// ========== LLM 配置管理 ==========
+const LLM_CONFIG_KEY = 'aqb_llm_config';
+
+function getLLMConfig() {
+  try {
+    const raw = localStorage.getItem(LLM_CONFIG_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+function saveLLMConfig(config) {
+  localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify(config));
+}
+
+function clearLLMConfig() {
+  localStorage.removeItem(LLM_CONFIG_KEY);
+}
+
+function getLLMHeaders() {
+  const cfg = getLLMConfig();
+  if (!cfg || !cfg.apiKey) return {};
+  return {
+    'X-LLM-API-Key': cfg.apiKey,
+    'X-LLM-Base-URL': cfg.baseUrl || '',
+    'X-LLM-Model': cfg.model || ''
+  };
+}
+
+function openSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  const cfg = getLLMConfig() || {};
+  document.getElementById('cfgApiKey').value = cfg.apiKey || '';
+  document.getElementById('cfgBaseUrl').value = cfg.baseUrl || '';
+  document.getElementById('cfgModel').value = cfg.model || '';
+  const statusEl = document.getElementById('settingsStatus');
+  statusEl.className = 'settings-status hidden';
+  modal.classList.remove('hidden');
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.add('hidden');
+}
+
+function setupSettings() {
+  const settingsBtn = document.getElementById('settingsBtn');
+  const closeBtn = document.getElementById('closeSettings');
+  const saveBtn = document.getElementById('saveSettings');
+  const resetBtn = document.getElementById('resetSettings');
+  const backdrop = document.querySelector('.modal-backdrop');
+
+  if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeSettingsModal);
+  if (backdrop) backdrop.addEventListener('click', closeSettingsModal);
+
+  if (saveBtn) saveBtn.addEventListener('click', function () {
+    const apiKey = document.getElementById('cfgApiKey').value.trim();
+    const baseUrl = document.getElementById('cfgBaseUrl').value.trim();
+    const model = document.getElementById('cfgModel').value.trim();
+    const statusEl = document.getElementById('settingsStatus');
+
+    if (!apiKey) {
+      statusEl.textContent = '请填写 API Key';
+      statusEl.className = 'settings-status error';
+      return;
+    }
+    if (!baseUrl) {
+      statusEl.textContent = '请填写 Base URL';
+      statusEl.className = 'settings-status error';
+      return;
+    }
+    if (!model) {
+      statusEl.textContent = '请填写模型名称';
+      statusEl.className = 'settings-status error';
+      return;
+    }
+
+    saveLLMConfig({ apiKey, baseUrl, model });
+    statusEl.textContent = '配置已保存';
+    statusEl.className = 'settings-status success';
+    setTimeout(closeSettingsModal, 1200);
+  });
+
+  if (resetBtn) resetBtn.addEventListener('click', function () {
+    clearLLMConfig();
+    document.getElementById('cfgApiKey').value = '';
+    document.getElementById('cfgBaseUrl').value = '';
+    document.getElementById('cfgModel').value = '';
+    const statusEl = document.getElementById('settingsStatus');
+    statusEl.textContent = '已恢复默认（使用服务端配置）';
+    statusEl.className = 'settings-status success';
+    setTimeout(closeSettingsModal, 1200);
+  });
+}
+
 function init() {
   loadFromStorage();
+
+  // LLM 配置
+  setupSettings();
 
   // 上传
   setupUploadZone();

@@ -34,6 +34,12 @@
               <option value="strategy">战略</option>
               <option value="economic_law">经济法</option>
             </select>
+            <button id="settingsBtn" class="settings-btn" title="LLM 配置">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m16.5-4.5L13 9m-2 2L6.5 6.5M17.5 17.5L13 13m-2-2L6.5 17.5"/>
+              </svg>
+            </button>
           </div>
         </div>
         <nav class="tabs">
@@ -273,6 +279,44 @@
 
     <!-- Toast 通知 -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- LLM 配置弹窗 -->
+    <div id="settingsModal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>LLM 服务配置</h2>
+          <button class="modal-close" id="closeSettings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="cfgApiKey">API Key <span class="required">*</span></label>
+            <input type="password" id="cfgApiKey" class="form-input" placeholder="sk-xxx..." />
+            <p class="form-hint">通义千问 / OpenAI / 其他兼容 API 的密钥</p>
+          </div>
+          <div class="form-group">
+            <label for="cfgBaseUrl">Base URL <span class="required">*</span></label>
+            <input type="text" id="cfgBaseUrl" class="form-input" placeholder="https://..." />
+            <p class="form-hint">API 基础地址（含 /v1）</p>
+          </div>
+          <div class="form-group">
+            <label for="cfgModel">模型名称 <span class="required">*</span></label>
+            <input type="text" id="cfgModel" class="form-input" placeholder="qwen-vl-max" />
+            <p class="form-hint">多模态模型名称（支持图片理解）</p>
+          </div>
+          <div class="form-actions">
+            <button id="resetSettings" class="btn btn-secondary">恢复默认</button>
+            <button id="saveSettings" class="btn btn-primary">保存配置</button>
+          </div>
+          <div id="settingsStatus" class="settings-status hidden"></div>
+        </div>
+      </div>
+    </div>
 
     <script src="/app.js"></script>
   </body>

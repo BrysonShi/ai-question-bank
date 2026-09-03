@@ -116,11 +116,17 @@ const DEFAULT_MODEL = LLM_MODEL;
 
 /**
  * 模式 2: 直接调用 OpenAI 兼容 API（用于外部部署）
+ * 支持前端通过 header 传入自定义 LLM 配置（优先级：header > 环境变量 > 默认值）
  */
-async function* streamDirectAPI(messages, model, temperature) {
-  const baseUrl = LLM_BASE_URL.replace(/\/$/, '');
-  const apiKey = LLM_API_KEY;
-  const modelName = model || LLM_MODEL;
+async function* streamDirectAPI(messages, model, temperature, req) {
+  // 从请求 header 读取前端配置（用户在网页上手动设置的）
+  const headerApiKey = req?.headers?.['x-llm-api-key'];
+  const headerBaseUrl = req?.headers?.['x-llm-base-url'];
+  const headerModel = req?.headers?.['x-llm-model'];
+
+  const baseUrl = (headerBaseUrl || LLM_BASE_URL).replace(/\/$/, '');
+  const apiKey = headerApiKey || LLM_API_KEY;
+  const modelName = model || headerModel || LLM_MODEL;
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -195,7 +201,7 @@ async function* streamCozeSDK(messages, model, temperature, req) {
  */
 async function* streamLLM(messages, model, temperature, req) {
   if (USE_DIRECT_API) {
-    yield* streamDirectAPI(messages, model, temperature);
+    yield* streamDirectAPI(messages, model, temperature, req);
   } else {
     const sdk = await getCozeSDK();
     if (sdk) {
