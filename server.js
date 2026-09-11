@@ -15,18 +15,16 @@ process.on('unhandledRejection', (reason, promise) => {
 // 模式 1 (Coze 沙箱): 使用 coze-coding-dev-sdk，自动处理鉴权
 // 模式 2 (外部部署): 设置 LLM_API_KEY 环境变量，使用 OpenAI 兼容 API
 
-// 默认 LLM 配置（通义千问 Token Plan）
-const DEFAULT_LLM_API_KEY = '***REMOVED_API_KEY***';
-const DEFAULT_LLM_BASE_URL = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';
-const DEFAULT_LLM_MODEL = 'qwen3.6-flash';
-
-const LLM_API_KEY = process.env.LLM_API_KEY || DEFAULT_LLM_API_KEY;
-const LLM_BASE_URL = process.env.LLM_BASE_URL || DEFAULT_LLM_BASE_URL;
-const LLM_MODEL = process.env.LLM_MODEL || DEFAULT_LLM_MODEL;
-const USE_DIRECT_API = true; // 始终使用直接 API 模式（有默认配置）
+// LLM 配置（OpenAI 兼容 API：通义千问/OpenAI/GLM 等）
+// API Key 来源优先级：前端请求头（用户在网页配置）> 环境变量 LLM_API_KEY
+// 注意：不要在代码中硬编码任何密钥。服务端默认不内置 key，未配置时会提示用户在网页填写。
+const LLM_API_KEY = process.env.LLM_API_KEY || '';
+const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+const LLM_MODEL = process.env.LLM_MODEL || 'qwen-vl-max';
+const USE_DIRECT_API = true; // 使用直接 API 模式（Coze SDK 为沙箱专用，外部部署不依赖）
 
 console.log('[AI Question Bank] Starting server...');
-console.log('[AI Question Bank] LLM_API_KEY:', LLM_API_KEY ? 'set' : 'not set');
+console.log('[AI Question Bank] LLM_API_KEY:', LLM_API_KEY ? 'set (env)' : 'not set (will use per-user key from web settings)');
 console.log('[AI Question Bank] LLM_BASE_URL:', LLM_BASE_URL);
 console.log('[AI Question Bank] LLM_MODEL:', LLM_MODEL);
 console.log('[AI Question Bank] PORT:', process.env.PORT || process.env.DEPLOY_RUN_PORT || 5000);
@@ -125,8 +123,12 @@ async function* streamDirectAPI(messages, model, temperature, req) {
   const headerModel = req?.headers?.['x-llm-model'];
 
   const baseUrl = (headerBaseUrl || LLM_BASE_URL).replace(/\/$/, '');
-  const apiKey = headerApiKey || LLM_API_KEY;
+  const apiKey = (headerApiKey || LLM_API_KEY || '').trim();
   const modelName = model || headerModel || LLM_MODEL;
+
+  if (!apiKey) {
+    throw new Error('未配置 LLM API Key：请点击页面右上角设置图标，填写你自己的 API Key / Base URL / 模型名称；或让管理员在服务端设置 LLM_API_KEY 环境变量。');
+  }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
